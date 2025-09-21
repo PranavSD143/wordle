@@ -1,0 +1,33 @@
+env/
+.venv/
+VENV/
+venv/
+
+# Compiled Python Files (Bytecode)
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE/Editor Files
+.vscode/
+.idea/
+*.swp
+
+# --- 2. SECURITY AND DATABASE ---
+# --- MUST BE EXCLUDED ---
+
+# Local Database File (Crucial for preventing conflicts)
+db.sqlite3
+
+# Security Key File (If you moved SECRET_KEY to an external file)
+# --- 3. DJANGO ARTIFACTS AND BUILD OUTPUT ---
+
+# Static files collected for production
+/staticfiles/
+/static_root/
+
+# Media files uploaded by users
+/media/
+
+# Ignore test databases
+*.sqlite3

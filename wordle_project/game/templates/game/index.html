@@ -1,0 +1,353 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Django Wordle</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="{% static 'game/css/styles.css' %}" />
+  </head>
+  <body>
+    <header
+      style="
+        width: 100%;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px 0;
+        border-bottom: 2px solid #ccc;
+        margin-bottom: 20px;
+      "
+    >
+      <div style="font-size: 1.5rem; font-weight: bold; color: #333">
+        Wordle Game
+      </div>
+
+      <nav style="display: flex; gap: 10px; align-items: center">
+        {% if user.is_authenticated %} {% if user.is_staff %}
+        <a
+          href="{% url 'admin_home' %}"
+          style="
+            background-color: #5bc0de;
+            color: white;
+            padding: 8px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+          "
+        >
+          Admin Dashboard
+        </a>
+        {% endif %}
+
+        <form method="post" action="{% url 'logout' %}" style="display: inline">
+          {% csrf_token %}
+          <button
+            type="submit"
+            style="
+              background-color: #d9534f;
+              color: white;
+              padding: 8px 15px;
+              border: none;
+              border-radius: 4px;
+              font-weight: bold;
+              cursor: pointer;
+            "
+          >
+            Log Out
+          </button>
+        </form>
+
+        {% endif %} {% if not user.is_authenticated %}
+        <a
+          href="{% url 'signup' %}"
+          style="
+            background-color: #6aaa64;
+            color: white;
+            padding: 8px 15px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+          "
+        >
+          Sign Up
+        </a>
+        {% endif %}
+      </nav>
+    </header>
+
+    {% if user.is_authenticated %}
+    <div id="game-container">
+      <div id="message"></div>
+      <div id="game-board"></div>
+      <div id="keyboard"></div>
+    </div>
+    {% else %}
+    <div id="login-prompt">
+      <h2>Please Log In to Play</h2>
+      <p>
+        <a href="{%url 'login'%}" style="color: blue">Log In</a>
+      </p>
+    </div>
+    {% endif %}
+  </body>
+  <script>
+
+    // Check if the user is authenticated before running game logic
+    {% if user.is_authenticated %}
+
+    const NUMBER_OF_GUESSES = 5;
+    const WORD_LENGTH = 5;
+    const KEYBOARD_LAYOUT = [
+        ['Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I', 'O', 'P'],
+        ['A', 'S', 'D', 'F', 'G', 'H', 'J', 'K', 'L'],
+        ['ENTER', 'Z', 'X', 'C', 'V', 'B', 'N', 'M', 'BACKSPACE']
+    ];
+
+    const gameBoard = document.getElementById('game-board');
+    const keyboardDiv = document.getElementById('keyboard');
+    const messageDiv = document.getElementById('message');
+
+    let currentGuess = [];
+    let nextLetter = 0;
+    let currentRow = 0;
+    let gameIsOver = false;
+
+    // Function to retrieve the Django CSRF Token
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    const CSRF_TOKEN = getCookie('csrftoken');
+
+    function initBoard() {
+
+        for (let i = 0; i < NUMBER_OF_GUESSES; i++) {
+            let row = document.createElement('div');
+            row.className = 'letter-row';
+            for (let j = 0; j < WORD_LENGTH; j++) {
+                let box = document.createElement('div');
+                box.className = 'letter-box';
+                row.appendChild(box);
+            }
+            gameBoard.appendChild(row);
+        }
+    }
+
+    function initKeyboard() {
+        KEYBOARD_LAYOUT.forEach(row => {
+            const rowDiv = document.createElement('div');
+            rowDiv.className = 'keyboard-row';
+            row.forEach(key => {
+                const button = document.createElement('button');
+                button.className = 'keyboard-button';
+                button.textContent = key;
+                button.setAttribute('data-key', key);
+                button.addEventListener('click', () => handleKey(key));
+                if (key === 'ENTER' || key === 'BACKSPACE') {
+                    button.classList.add('large');
+                }
+                rowDiv.appendChild(button);
+            });
+            keyboardDiv.appendChild(rowDiv);
+        });
+    }
+
+    function handleKey(key) {
+        if (gameIsOver) return;
+
+        if (key === 'BACKSPACE') {
+
+            if (nextLetter > 0) {
+                nextLetter--;
+                currentGuess.pop();
+                gameBoard.children[currentRow].children[nextLetter].textContent = '';
+            }
+        } else if (key === 'ENTER') {
+
+            if (currentGuess.length === WORD_LENGTH) {
+                checkGuess();
+            } else {
+                showMessage("Not enough letters!", 1000);
+            }
+        } else if (key.length === 1 && key.match(/[A-Z]/)) {
+
+            if (nextLetter < WORD_LENGTH) {
+                currentGuess.push(key);
+                gameBoard.children[currentRow].children[nextLetter].textContent = key;
+                nextLetter++;
+            }
+        }
+    }
+
+    function showMessage(message, duration = 0) {
+        messageDiv.textContent = message;
+        if (duration > 0) {
+            setTimeout(() => messageDiv.textContent = '', duration);
+        }
+    }
+
+    function updateKeyboard(guess, results) {
+        guess.forEach((letter, index) => {
+            const result = results[index];
+            const button = document.querySelector(`.keyboard-button[data-key="${letter}"]`);
+
+            if (button) {
+                // Only upgrade the color (Green > Yellow > Gray)
+                if (result === 'correct') {
+                    button.className = 'keyboard-button large correct';
+                } else if (result === 'misplaced' && !button.classList.contains('correct')) {
+                    button.className = 'keyboard-button large misplaced';
+                } else if (result === 'wrong' && !button.classList.contains('correct') && !button.classList.contains('misplaced')) {
+                    button.className = 'keyboard-button large wrong';
+                }
+            }
+        });
+    }
+
+    function checkGuess() {
+        const guessString = currentGuess.join('');
+
+        fetch('/check_guess/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': CSRF_TOKEN // Essential Django Security Token
+            },
+            body: JSON.stringify({ guess: guessString })
+        })
+            .then(response => response.json())
+            .then(data => {
+
+                // Handle server-side errors/limit messages
+                if (data.message) {
+                    showMessage(data.message, 3000);
+
+                    // If game over (limit or already solved), force reload to start next game/show status
+                    if (data.message.includes('limit') || data.message.includes('solved') || data.message.includes('maximum') || data.message.includes('luck')) {
+                        gameIsOver = true;
+                    }
+                    return;
+                }
+
+                const results = data.results;
+                const currentBoxes = gameBoard.children[currentRow].children;
+
+                // Animate and color the tiles
+                results.forEach((result, index) => {
+                    setTimeout(() => {
+                        currentBoxes[index].classList.add(result);
+                    }, index * 200);
+                });
+
+                updateKeyboard(currentGuess, results);
+
+                currentRow++;
+                currentGuess = [];
+                nextLetter = 0;
+
+                if (data.is_correct) {
+                    alert("Congradulations, you won this round");
+                    gameIsOver = true;
+                    // Win: Force reload to trigger index view to assign next word
+                }
+                else if (currentRow >= NUMBER_OF_GUESSES) {
+                    alert("Game Over !! Better luck next time"); // Word was not solved in 5 tries
+                    gameIsOver = true;
+                    // Loss: Force reload to trigger index view to assign next word
+                }
+            })
+            .catch(error => {
+                console.error('Error submitting guess:', error);
+                showMessage("Server Error. Check console.", 5000);
+            });
+    }
+
+
+        function restoreState() {
+        if (!CSRF_TOKEN) return;
+
+        fetch('/api/state/')
+            .then(response =>response.json())
+            .then(data => {
+                if (!data || data.error) return;
+
+                //Conditions are messed up handle each state ka start 
+                if (data.status === 'DAILYLIMITREACHED' || data.status === 'LOSTGAMEOVER' || data.is_solved) {
+                    
+                    // Determine the message based on the status flag provided by the backend
+                    let finalMessage = "";
+                    if (data.status === 'DAILYLIMITREACHED') {
+                        finalMessage = "DAILY LIMIT REACHED. You have played 3 words today.";
+                    } else if (data.status === 'LOSTGAMEOVER') {
+                        finalMessage = "Game Over! You lost a word today. Try again tomorrow.";
+                    } else if (data.is_solved) {
+                        finalMessage = "You won this word! Refresh to get your next one.";
+                    }
+                    
+                    showMessage(finalMessage, 0);
+                    gameIsOver = true;
+                    return;
+                }
+                
+                // 2. RESTORATION LOGIC (Only runs if the game is in an intermediate state)
+                if (data.guesses && data.guesses.length > 0) {
+                    
+                    data.guesses.forEach((guess, index) => {
+                        const results = data.results_history[index];
+                        const currentBoxes = gameBoard.children[index].children;
+                        
+                        // 1. Visually restore letters and apply colors
+                        guess.split('').forEach((letter, letterIndex) => {
+                            currentBoxes[letterIndex].textContent = letter;
+                            currentBoxes[letterIndex].classList.add(results[letterIndex]);
+                        });
+                        
+                        // 2. Restore keyboard colors
+                        updateKeyboard(guess.split(''), results);
+                    });
+
+                    // 3. Update internal state variables
+                    currentRow = data.guesses.length;
+                    gameIsOver = data.is_solved; // Should be false if we reached here after the first check
+
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching game state:', error);
+            });
+    }
+    initBoard();
+    initKeyboard();
+    restoreState();
+
+    document.addEventListener('keydown', (event) => {
+        const key = event.key.toUpperCase();
+        if (key.match(/^[A-Z]$/) || key === 'BACKSPACE' || key === 'ENTER') {
+            handleKey(key);
+        }
+    });
+
+
+    {% if request.session.secret_word == 'DAILYLIMITREACHED' %}
+        showMessage("DAILY LIMIT REACHED. You have solved 3 words today.", 0);
+        gameIsOver = true;
+    {% endif %}
+
+    {% endif %}
+  </script>
+</html>

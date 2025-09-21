@@ -1,0 +1,74 @@
+{% extends 'admin/base.html' %}
+{% load static %}
+
+{% block title %}Wordle Report{% endblock %}
+{% block content_title %}<h2> Site Statistics</h2>{% endblock %}
+
+{% block content %}
+<div id="content-main">
+    <div class="module">
+        <div class="changelist-form">
+            
+            <table id="result_list" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="padding: 10px; text-align: left;">Date</th>
+                        <th style="padding: 10px; text-align: right;">Total Unique Players</th>
+                        <th style="padding: 10px; text-align: right;">Total Correct Guesses</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Loop through the aggregated data passed from the view #}
+                    {% for day in historical_stats %}
+                    <tr class="{% cycle 'row1' 'row2' %}">
+                        <td style="padding: 10px; text-align: left; font-weight: bold;">{{ day.date|date:"F j, Y" }}</td>
+                        <td style="padding: 10px; text-align: right;">{{ day.total_users }}</td>
+                        <td style="padding: 10px; text-align: right;">{{ day.total_wins }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="3" style="padding: 20px; text-align: center;">No historical data available yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+    {# --- NEW SECTION: INDIVIDUAL USER ACTIVITY BREAKDOWN --- #}
+    <h3 style="margin-top: 40px; border-bottom: 1px solid #ccc; padding-bottom: 10px;">👤 User Activity Breakdown</h3>
+    <div class="module">
+        <div class="changelist-form">
+            <table id="user_detail_list" style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr>
+                        <th style="padding: 10px; text-align: left; width: 25%;">Date</th>
+                        <th style="padding: 10px; text-align: left; width: 30%;">Username</th>
+                        <th style="padding: 10px; text-align: right;">Words Tried</th>
+                        <th style="padding: 10px; text-align: right;">Words Solved (Wins)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {# Loop through the detailed, individual DailyStats records #}
+                    {% for stat in daily_stats_detail %}
+                    <tr class="{% cycle 'row1' 'row2' %}">
+                        <td style="padding: 10px; text-align: left;">{{ stat.date|date:"F j, Y" }}</td>
+                        <td style="padding: 10px; text-align: left; font-weight: bold;">{{ stat.user.username }}</td>
+                        <td style="padding: 10px; text-align: right;">{{ stat.words_tried }}</td>
+                        <td style="padding: 10px; text-align: right;">{{ stat.words_solved }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" style="padding: 20px; text-align: center;">No detailed user stats available yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <p style="margin-top: 30px;">
+        <a href="{% url 'admin:index' %}">Go to Django Administrator Dashboard -></a>
+    </p>
+</div>
+{% endblock %}

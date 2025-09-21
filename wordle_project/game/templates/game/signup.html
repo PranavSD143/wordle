@@ -1,0 +1,36 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Sign Up</title>
+  </head>
+  <link rel="stylesheet" href = "{%static 'game/css/signup.css'%}"/>
+  <body>
+    <div class="container">
+      <h2>Register for Wordle</h2>
+      <form method="post">
+        {% csrf_token %} 
+        {% for field in form %}
+          <p>
+            {{ field.label_tag }} {{ field }} 
+            {% if field.help_text %}
+              <small style="color: gray">{{ field.help_text }}</small>
+            {% endif %} 
+            {% for error in field.errors %}
+              <span style="color: red; font-size: 0.9em">{{ error }}</span>
+            {% endfor %}
+        </p>
+        {% endfor %} 
+        {% if form.non_field_errors %}
+          <div class="errorlist">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <button type="submit">Sign Up</button>
+      </form>
+      <p style="text-align: center; margin-top: 20px">
+        <a href="{% url 'index' %}">Back to Game</a>
+      </p>
+    </div>
+  </body>
+</html>
